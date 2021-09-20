@@ -76,10 +76,18 @@ legacy_loginServer <- function(id,
     id,
     function(input, output, session) {
 
-      credentials <- shiny::reactiveValues(user_auth = FALSE, info = NULL, cookie_already_checked = FALSE)
+      credentials <- shiny::reactiveValues(user_auth = FALSE, info = NULL)
+      # We want to avoid flashing a useless login prompt if we have a
+      # valid cookie, but at session initialization time we can't know
+      # immediately whether that will the case. Note that this
+      # reactiveValue is kept on the server side and not transmitted
+      # over the websocket:
+      .auth_state <- shiny::reactiveValues(settled = ! cookie_logins)
 
+      # Synchronize visibility of the login / logout controls
       shiny::observe({
-        shinyjs::toggle(id = "button_logout", condition = credentials$user_auth)
+        shinyjs::toggle(id = "button_logout", condition = .auth_state$settled && credentials$user_auth)
+        shinyjs::toggle(id = "panel_login", condition = .auth_state$settled && !credentials$user_auth)
       })
 
       shiny::observeEvent(input$button_logout, {
@@ -96,18 +104,6 @@ legacy_loginServer <- function(id,
         }
       })
 
-      shiny::observe({
-        if (cookie_logins) {
-          if (credentials$user_auth) {
-            shinyjs::hide(id = "panel_login")
-          } else if (credentials$cookie_already_checked) {
-            shinyjs::show(id = "panel_login")
-          }
-        } else {
-          shinyjs::toggle(id = "panel_login", condition = !credentials$user_auth)
-        }
-      })
-
       if (cookie_logins) {
 
         # possibility 1: login through a present valid cookie
@@ -117,13 +113,16 @@ legacy_loginServer <- function(id,
         })
         # second, once cookie is found try to use it
         shiny::observeEvent(input$jscookie, {
-          credentials$cookie_already_checked <- TRUE
+          # Regardless of the outcome below, by the end of this “game
+          # turn” of the async event loop, it will be time to show
+          # either the login or the logout UI:
+          .auth_state$settled <- TRUE
 
-          # if already logged in or cookie missing, ignore change in input$jscookie
+          # Stop now if cookie is a dud for any reason:...
           shiny::req(
-            credentials$user_auth == FALSE,
-            is.null(input$jscookie) == FALSE,
-            nchar(input$jscookie) > 0
+            credentials$user_auth == FALSE,     ## ... if already logged in,
+            is.null(input$jscookie) == FALSE,   ## ... if no cookie,
+            nchar(input$jscookie) > 0           ## ... if cookie is empty
           )
 
           cookie_data <- dplyr::filter(cookie_getter(), {{sessionid_col}} == input$jscookie)
