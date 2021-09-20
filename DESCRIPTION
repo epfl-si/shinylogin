@@ -1,0 +1,31 @@
+Package: shinylogin
+Type: Package
+Title: Authentication Module for Shiny
+Version: 0.0.0.9000
+Authors@R:
+    c(person(given = "Dominique",
+             family = "Quatravaux",
+             email = "dominique.quatravaux@epfl.ch",
+             role = c("aut", "cre")))
+Description: Add in-app user authentication to 'shiny',
+    allowing you to secure publicly hosted apps and
+    build dynamic user interfaces from user information.
+License: MIT
+Encoding: UTF-8
+LazyData: true
+Imports:
+    shiny (>= 1.5.0),
+    shinyjs,
+    rlang,
+    glue,
+    DBI,
+    RSQLite
+Suggests:
+    shinydashboard,
+    testthat (>= 3.0.0),
+    shinytest,
+    knitr,
+    rmarkdown,
+    covr
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
