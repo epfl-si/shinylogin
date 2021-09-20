@@ -44,6 +44,13 @@ legacy_loginServer <- function(id,
                         cookie_getter,
                         cookie_setter) {
 
+  randomString <- function(n = 64) {
+    paste(
+      sample(x = c(letters, LETTERS, 0:9), size = n, replace = TRUE),
+      collapse = ""
+    )
+  }
+
   # if colnames are strings convert them to symbols
   try_class_uc <- try(class(user_col), silent = TRUE)
   if (try_class_uc == "character") {
@@ -239,20 +246,5 @@ legacy_logoutServer <- function(id, active, ...) {
         input$button
       })
     }
-  )
-}
-
-#' Generate random string
-#'
-#' This function is used to generate random session ids.
-#'
-#' @param n length of string
-#'
-#' @return A random character string.
-#' @noRd
-randomString <- function(n = 64) {
-  paste(
-    sample(x = c(letters, LETTERS, 0:9), size = n, replace = TRUE),
-    collapse = ""
   )
 }
