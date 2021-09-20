@@ -19,7 +19,8 @@ Imports:
     rlang,
     glue,
     DBI,
-    RSQLite
+    RSQLite,
+    lubridate
 Suggests:
     shinydashboard,
     testthat (>= 3.0.0),
