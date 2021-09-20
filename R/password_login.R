@@ -29,7 +29,7 @@ passwordLogin <- function(auth, cookies = NULL) {
                            login_title = "Log in",
                            error_message = "Invalid username or password!",
                            additional_ui = NULL) {
-            legacy_loginUI(id = login_id, title, user_title, pass_title,
+            passwordLoginUI(id = login_id, title, user_title, pass_title,
                            login_title, error_message, additional_ui,
                            cookie_expiry = cookies$expiry_days)
         },
