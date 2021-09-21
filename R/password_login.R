@@ -26,7 +26,7 @@ passwordLogin <- function(auth, cookies = NULL) {
 
         logoutUI = function(label = "Log out", icon = NULL, class = "btn-danger",
                             style = "color: white;") {
-            legacy_logoutUI(id, label, icon, class, style)
+            passwordLogoutUI(id, label, icon, class, style)
         },
 
         loginServer = function() {
