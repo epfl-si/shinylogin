@@ -63,13 +63,11 @@ legacy_loginServer <- function(id,
       })
 
       if (! is.null(cookies)) {
-
         # possibility 1: login through a present valid cookie
-        # first, check for a cookie once javascript is ready
-        shiny::observeEvent(shiny::isTruthy(shinyjs::js$getcookie()), {
-          shinyjs::js$getcookie()
-        })
-        # second, once cookie is found try to use it
+        shinyjs::js$getcookie()
+        # This just tells JS to send the cookie to R. As per
+        # https://stackoverflow.com/a/34728125 here is how
+        # we get the response:
         shiny::observeEvent(input$jscookie, {
           # Regardless of the outcome below, by the end of this “game
           # turn” of the async event loop, it will be time to show

@@ -21,7 +21,7 @@ passwordLogin <- function(auth, cookies = NULL) {
                            additional_ui = NULL) {
             passwordLoginUI(id, title, user_title, pass_title,
                            login_title, error_message, additional_ui,
-                           cookie_expiry = cookies$expiry_days)
+                           cookie_expire_days = cookies$expire_days)
         },
 
         logoutUI = function(label = "Log out", icon = NULL, class = "btn-danger",
@@ -78,7 +78,7 @@ htpasswdAuth <- function(path) {
 }
 
 #' @export
-inMemoryCookieStore <- function(expiry_days = 7) {
+inMemoryCookieStore <- function(expire_days = 7) {
     requireNamespace(c("DBI", "RSQLite", "lubridate", "tibble", "dplyr"))
 
     db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
@@ -93,7 +93,7 @@ inMemoryCookieStore <- function(expiry_days = 7) {
     cookie_getter = function() {
         all_cookies <- DBI::dbReadTable(db, "sessions")
         all_cookies <- tibble::as_tibble(dplyr::mutate(all_cookies, login_time = lubridate::ymd_hms(login_time)))
-        dplyr::filter(all_cookies, login_time > lubridate::now() - lubridate::days(expiry_days))
+        dplyr::filter(all_cookies, login_time > lubridate::now() - lubridate::days(expire_days))
     }
 
     cookie_setter = function(user, sessionid) {
@@ -103,7 +103,7 @@ inMemoryCookieStore <- function(expiry_days = 7) {
 
     ## TODO: make this an R6Class() or something
     list(
-        expiry_days = expiry_days,
+        expire_days = expire_days,
 
         create = function(user_id) {
             sessionid_ <- randomString()
