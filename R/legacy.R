@@ -1,6 +1,6 @@
 #' Code hoisted out of shinyauthR, pending refactoring
 
-requireNamespace(c("shiny", "shinyjs", "dplyr", "tibble"))
+requireNamespace(c("shiny", "shinyjs"))
 ## And a slatering of sodium, but we'll fix that later
 
 #' login server module
@@ -103,10 +103,10 @@ legacy_loginServer <- function(id,
         }
 
         credentials$user_auth <- TRUE
-        credentials$info <- tibble::tibble(user = user_id)
+        credentials$info <- list(user = user_id)
         if (! is.null(cookies)) {
             cookie <- cookies$create(user_id)
-            credentials$info <- dplyr::bind_cols(credentials$info, cookie$info)
+            credentials$info <- c(credentials$info, cookie$info)
             shinyjs::js$setcookie(cookie$sessionid)
         }
       })

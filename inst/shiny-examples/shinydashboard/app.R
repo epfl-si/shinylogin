@@ -1,6 +1,7 @@
 library(shiny)
 library(shinydashboard)
 library(tibble)
+library(dplyr)
 library(glue)
 
 login <- shinylogin::passwordLogin(
@@ -62,15 +63,13 @@ server <- function(input, output, session) {
       creds <- credentials()
       req(creds$user_auth)
 
-      user_line <- dplyr::filter(user_base, user == creds$info$user)
-      req(nrow(user_line) > 0)
-
-      dplyr::left_join(
-          by = c("user"),
-          creds$info,
+      do.call(tibble, creds$info) %>%
+          left_join(
+              by = c("user"),
+              user_base) %>%
           ## Obviously in a real app, you wouldn't have a `password` colum and
           ## you wouldn't have to do this:
-          dplyr::select(user_line, -password))
+          select(-password)
   })
 
   user_data <- reactive({
