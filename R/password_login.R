@@ -33,13 +33,7 @@ passwordLogin <- function(auth, cookies = NULL) {
             legacy_loginServer(
                 id = id,
                 auth = auth,
-
-                ## TODO: refactor so that loginServer doesn't need to care about this.
-                user_col = user,
-                sessionid_col = sessionid,
-                cookie_logins = TRUE,
-                cookie_getter = cookies$cookie_getter,
-                cookie_setter = cookies$cookie_setter)
+                cookies = cookies)
         })
 }
 
@@ -90,17 +84,44 @@ inMemoryCookieStore <- function(expiry_days = 7) {
     db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
     DBI::dbCreateTable(db, "sessions", c(user = "TEXT", sessionid = "TEXT", login_time = "TEXT"))
 
+    randomString <- function(n = 64) {
+        paste(
+            sample(x = c(letters, LETTERS, 0:9), size = n, replace = TRUE),
+            collapse = "")
+    }
+
+    cookie_getter = function() {
+        all_cookies <- DBI::dbReadTable(db, "sessions")
+        all_cookies <- tibble::as_tibble(dplyr::mutate(all_cookies, login_time = lubridate::ymd_hms(login_time)))
+        dplyr::filter(all_cookies, login_time > lubridate::now() - lubridate::days(expiry_days))
+    }
+
+    cookie_setter = function(user, sessionid) {
+        new_cookie <- tibble::tibble(user = user, sessionid = sessionid, login_time = as.character(lubridate::now()))
+        DBI::dbWriteTable(db, "sessions", new_cookie, append = TRUE)
+    }
+
+    ## TODO: make this an R6Class() or something
     list(
         expiry_days = expiry_days,
 
-        cookie_getter = function() {
-            all_cookies <- DBI::dbReadTable(db, "sessions")
-            all_cookies <- tibble::as_tibble(dplyr::mutate(all_cookies, login_time = lubridate::ymd_hms(login_time)))
-            dplyr::filter(all_cookies, login_time > lubridate::now() - lubridate::days(expiry_days))
+        create = function(user_id) {
+            sessionid_ <- randomString()
+            cookie_setter(user_id, sessionid_)
+            info <- dplyr::filter(cookie_getter(), sessionid == sessionid_)
+            if (nrow(info) == 1) {
+                list(
+                    sessionid = sessionid_,
+                    info = dplyr::select(info, -user))
+            }
         },
 
-        cookie_setter = function(user, sessionid) {
-            new_cookie <- tibble::tibble(user = user, sessionid = sessionid, login_time = as.character(lubridate::now()))
-            DBI::dbWriteTable(db, "sessions", new_cookie, append = TRUE)
+        retrieve = function(session_id) {
+            cookie_tibble <- dplyr::filter(cookie_getter(), sessionid == session_id)
+            if (nrow(cookie_tibble) == 1) {
+                cookie_tibble
+            } else {
+                NULL
+            }
         })
 }

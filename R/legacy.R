@@ -14,12 +14,8 @@ requireNamespace(c("shiny", "shinyjs", "dplyr", "tibble"))
 #'
 #' @param id 	An ID string that corresponds with the ID used to call the module's UI function
 #' @param auth  An object returned by e.g. \link{htpasswdAuth}
-#' @param user_col bare (unquoted) or quoted column name containing user names
+#' @param cookies  An object returned by e.g. \link{inMemoryCookieStore}, or NULL if no persistent session mechanism is to be used
 #' @param reload_on_logout should app force a session reload on logout?
-#' @param cookie_logins enable automatic logins via browser cookies?
-#' @param sessionid_col bare (unquoted) or quoted column name containing session ids
-#' @param cookie_getter a function that returns a data.frame with at least two columns: user and session
-#' @param cookie_setter a function with two parameters: user and session.  The function must save these to a database.
 #'
 #' @return The module will return a reactive 2 element list to your main application.
 #'   First element \code{user_auth} is a boolean indicating whether there has been
@@ -31,28 +27,8 @@ requireNamespace(c("shiny", "shinyjs", "dplyr", "tibble"))
 #'
 legacy_loginServer <- function(id,
                         auth,
-                        user_col,
-                        reload_on_logout = FALSE,
-                        cookie_logins = FALSE,
-                        sessionid_col,
-                        cookie_getter,
-                        cookie_setter) {
-
-  randomString <- function(n = 64) {
-    paste(
-      sample(x = c(letters, LETTERS, 0:9), size = n, replace = TRUE),
-      collapse = ""
-    )
-  }
-
-  if (cookie_logins && (missing(cookie_getter) | missing(cookie_setter) | missing(sessionid_col))) {
-    stop("if cookie_logins = TRUE, cookie_getter, cookie_setter and sessionid_col must be provided")
-  } else {
-    try_class_sc <- try(class(sessionid_col), silent = TRUE)
-    if (try_class_sc == "character") {
-      sessionid_col <- rlang::sym(sessionid_col)
-    }
-  }
+                        cookies = NULL,
+                        reload_on_logout = FALSE) {
 
   shiny::moduleServer(
     id,
@@ -64,7 +40,7 @@ legacy_loginServer <- function(id,
       # immediately whether that will the case. Note that this
       # reactiveValue is kept on the server side and not transmitted
       # over the websocket:
-      .auth_state <- shiny::reactiveValues(settled = ! cookie_logins)
+      .auth_state <- shiny::reactiveValues(settled = is.null(cookies))
 
       # Synchronize visibility of the login / logout controls
       shiny::observe({
@@ -73,7 +49,7 @@ legacy_loginServer <- function(id,
       })
 
       shiny::observeEvent(input$button_logout, {
-        if (cookie_logins) {
+        if (! is.null(cookies)) {
           shinyjs::js$rmcookie()
         }
 
@@ -86,7 +62,7 @@ legacy_loginServer <- function(id,
         }
       })
 
-      if (cookie_logins) {
+      if (! is.null(cookies)) {
 
         # possibility 1: login through a present valid cookie
         # first, check for a cookie once javascript is ready
@@ -107,9 +83,8 @@ legacy_loginServer <- function(id,
             nchar(input$jscookie) > 0           ## ... if cookie is empty
           )
 
-          cookie_data <- dplyr::filter(cookie_getter(), {{sessionid_col}} == input$jscookie)
-
-          if (nrow(cookie_data) != 1) {
+          cookie_data <- cookies$retrieve(input$jscookie)
+          if (is.null(cookie_data)) {
             shinyjs::js$rmcookie()
           } else {
             credentials$user_auth <- TRUE
@@ -122,23 +97,19 @@ legacy_loginServer <- function(id,
       shiny::observeEvent(input$button_login, {
         # if user name row and password name row are same, credentials are valid
         user_id <- auth$checkPassword(input$user_name, input$password)
-        if (! is.null(user_id)) {
-          credentials$user_auth <- TRUE
-          credentials$info <- tibble::tibble(user = user_id)
-
-          if (cookie_logins) {
-            .sessionid <- randomString()
-            shinyjs::js$setcookie(.sessionid)
-            cookie_setter(user_id, .sessionid)
-            cookie_data <- dplyr::filter(dplyr::select(cookie_getter(), -{{user_col}}), {{sessionid_col}} == .sessionid)
-            if (nrow(cookie_data) == 1) {
-              credentials$info <- dplyr::bind_cols(credentials$info, cookie_data)
-            }
-          }
-
-        } else { # if not valid temporarily show error message to user
+        if (is.null(user_id)) {
+          # Send “wrong password” UI events down the websocket:
           shinyjs::toggle(id = "error", anim = TRUE, time = 1, animType = "fade")
           shinyjs::delay(5000, shinyjs::toggle(id = "error", anim = TRUE, time = 1, animType = "fade"))
+          return()
+        }
+
+        credentials$user_auth <- TRUE
+        credentials$info <- tibble::tibble(user = user_id)
+        if (! is.null(cookies)) {
+            cookie <- cookies$create(user_id)
+            credentials$info <- dplyr::bind_cols(credentials$info, cookie$info)
+            shinyjs::js$setcookie(cookie$sessionid)
         }
       })
 
