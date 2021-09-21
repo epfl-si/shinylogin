@@ -12,14 +12,6 @@
 passwordLogin <- function(auth, cookies = NULL) {
     id <- .ids$nextId()
 
-    ## XXX OUCH
-    ## Must be refactored inside `auth`, prior to being eliminated
-    ## in favor of an htpasswd file
-    requireNamespace("sodium")
-    user_base <- tibble(
-        user = c("user1", "user2"),
-        password_hash = sapply(c("pass1", "pass2"), sodium::password_store))
-
     list(
         loginUI = function(title = "Please log in",
                            user_title = "User Name",
@@ -40,15 +32,10 @@ passwordLogin <- function(auth, cookies = NULL) {
         loginServer = function() {
             legacy_loginServer(
                 id = id,
-                ## XXX BEGINNING OF OUCH
-                ## Must be refactored inside `auth`, prior to being eliminated
-                data = user_base,
-                user_col = user,
-                pwd_col = password_hash,
-                sodium_hashed = TRUE,
-                ## XXX END OF OUCH
+                auth = auth,
 
                 ## TODO: refactor so that loginServer doesn't need to care about this.
+                user_col = user,
                 sessionid_col = sessionid,
                 cookie_logins = TRUE,
                 cookie_getter = cookies$cookie_getter,
@@ -68,7 +55,32 @@ newIDSequence <- function(stem) {
 
 #' @export
 htpasswdAuth <- function(path) {
-    # TODO
+    ## XXX OUCH
+    ## Needs eliminatin'
+    requireNamespace("sodium")
+    user_base <- tibble(
+        user = c("user1", "user2"),
+        password_hash = sapply(c("pass1", "pass2"), sodium::password_store))
+    user_base <- dplyr::mutate_if(user_base, is.factor, as.character)
+
+    ## TODO: make this an R6Class() or something
+    list(checkPassword = function(username, password) {
+        # check for match of input username to username column in data
+        row_username <- which(dplyr::pull(user_base, user) == username)
+
+        if (length(row_username)) {
+          row_password <- dplyr::filter(user_base, dplyr::row_number() == row_username)
+          password_match <- sodium::password_verify(row_password$password_hash, password)
+        } else {
+          password_match <- FALSE
+        }
+
+        if (password_match) {
+            username
+        } else {
+            NULL
+        }
+    })
 }
 
 #' @export

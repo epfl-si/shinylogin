@@ -1,6 +1,6 @@
 #' Code hoisted out of shinyauthR, pending refactoring
 
-requireNamespace(c("shiny", "shinyjs", "dplyr"))
+requireNamespace(c("shiny", "shinyjs", "dplyr", "tibble"))
 ## And a slatering of sodium, but we'll fix that later
 
 #' login server module
@@ -13,10 +13,8 @@ requireNamespace(c("shiny", "shinyjs", "dplyr"))
 #' \href{https://shiny.rstudio.com/articles/modules.html}{Modularizing Shiny app code}.
 #'
 #' @param id 	An ID string that corresponds with the ID used to call the module's UI function
-#' @param data data frame or tibble containing user names, passwords and other user data
+#' @param auth  An object returned by e.g. \link{htpasswdAuth}
 #' @param user_col bare (unquoted) or quoted column name containing user names
-#' @param pwd_col bare (unquoted) or quoted column name containing passwords
-#' @param sodium_hashed have the passwords been hash encrypted using the sodium package? defaults to FALSE
 #' @param reload_on_logout should app force a session reload on logout?
 #' @param cookie_logins enable automatic logins via browser cookies?
 #' @param sessionid_col bare (unquoted) or quoted column name containing session ids
@@ -32,10 +30,8 @@ requireNamespace(c("shiny", "shinyjs", "dplyr"))
 #' @importFrom rlang :=
 #'
 legacy_loginServer <- function(id,
-                        data,
+                        auth,
                         user_col,
-                        pwd_col,
-                        sodium_hashed = FALSE,
                         reload_on_logout = FALSE,
                         cookie_logins = FALSE,
                         sessionid_col,
@@ -49,17 +45,6 @@ legacy_loginServer <- function(id,
     )
   }
 
-  # if colnames are strings convert them to symbols
-  try_class_uc <- try(class(user_col), silent = TRUE)
-  if (try_class_uc == "character") {
-    user_col <- rlang::sym(user_col)
-  }
-
-  try_class_pc <- try(class(pwd_col), silent = TRUE)
-  if (try_class_pc == "character") {
-    pwd_col <- rlang::sym(pwd_col)
-  }
-
   if (cookie_logins && (missing(cookie_getter) | missing(cookie_setter) | missing(sessionid_col))) {
     stop("if cookie_logins = TRUE, cookie_getter, cookie_setter and sessionid_col must be provided")
   } else {
@@ -68,9 +53,6 @@ legacy_loginServer <- function(id,
       sessionid_col <- rlang::sym(sessionid_col)
     }
   }
-
-  # ensure all text columns are character class
-  data <- dplyr::mutate_if(data, is.factor, as.character)
 
   shiny::moduleServer(
     id,
@@ -141,10 +123,7 @@ legacy_loginServer <- function(id,
             cookie_data <- utils::head(dplyr::filter(cookie_getter(), {{sessionid_col}} == .sessionid, {{user_col}} == .userid))
 
             credentials$user_auth <- TRUE
-            credentials$info <- dplyr::bind_cols(
-              dplyr::filter(data, {{user_col}} == .userid),
-              dplyr::select(cookie_data, -{{user_col}})
-            )
+            credentials$info <- cookie_data
           }
         })
 
@@ -152,32 +131,16 @@ legacy_loginServer <- function(id,
 
       # possibility 2: login through login button
       shiny::observeEvent(input$button_login, {
-
-        # check for match of input username to username column in data
-        row_username <- which(dplyr::pull(data, {{user_col}}) == input$user_name)
-
-        if (length(row_username)) {
-          row_password <- dplyr::filter(data, dplyr::row_number() == row_username)
-          row_password <- dplyr::pull(row_password, {{pwd_col}})
-          if (sodium_hashed) {
-            password_match <- sodium::password_verify(row_password, input$password)
-          } else {
-            password_match <- identical(row_password, input$password)
-          }
-        } else {
-          password_match <- FALSE
-        }
-
         # if user name row and password name row are same, credentials are valid
-        if (length(row_username) == 1 && password_match) {
-
+        user_id <- auth$checkPassword(input$user_name, input$password)
+        if (! is.null(user_id)) {
           credentials$user_auth <- TRUE
-          credentials$info <- dplyr::filter(data, {{user_col}} == input$user_name)
+          credentials$info <- tibble::tibble(user = user_id)
 
           if (cookie_logins) {
             .sessionid <- randomString()
             shinyjs::js$setcookie(.sessionid)
-            cookie_setter(input$user_name, .sessionid)
+            cookie_setter(user_id, .sessionid)
             cookie_data <- dplyr::filter(dplyr::select(cookie_getter(), -{{user_col}}), {{sessionid_col}} == .sessionid)
             if (nrow(cookie_data) == 1) {
               credentials$info <- dplyr::bind_cols(credentials$info, cookie_data)
