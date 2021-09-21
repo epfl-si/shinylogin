@@ -13,6 +13,7 @@ passwordLogin <- function(auth, cookies = NULL) {
     id <- .ids$nextId()
 
     list(
+        id = id,
         loginUI = function(title = "Please log in",
                            user_title = "User Name",
                            pass_title = "Password",
