@@ -48,33 +48,55 @@ newIDSequence <- function(stem) {
 
 .ids <- newIDSequence("passwordLogin")
 
+#' Authenticate users out of a bcrypt htpasswd file
+#'
+#' ⚠ This is not just any htpasswd file; it must have been created
+#' using with the "htpasswd -B" command
+#'
 #' @export
 htpasswdAuth <- function(path) {
-    ## XXX OUCH
-    ## Needs eliminatin'
-    requireNamespace("sodium")
-    user_base <- tibble(
-        user = c("user1", "user2"),
-        password_hash = sapply(c("pass1", "pass2"), sodium::password_store))
-    user_base <- dplyr::mutate_if(user_base, is.factor, as.character)
+    htpasswd <- read.csv(path, sep=":", header = FALSE, col.names = c("user", "hashed_password"))
+
+    function_exists <- function(package, funcname) {
+        tryCatch({
+            utils::getFromNamespace(funcname, package)
+            TRUE
+        }, error = function(...) { FALSE })
+    }
 
     ## TODO: make this an R6Class() or something
     list(checkPassword = function(username, password) {
-        # check for match of input username to username column in data
-        row_username <- which(dplyr::pull(user_base, user) == username)
+        htpasswd_line <- read.csv(path, sep=":", header = FALSE,
+                                  col.names = c("user", "hashed_password")
+                                  )[which(htpasswd$user == username),]
+        if (nrow(htpasswd_line) != 1) return(NULL)
 
-        if (length(row_username)) {
-          row_password <- dplyr::filter(user_base, dplyr::row_number() == row_username)
-          password_match <- sodium::password_verify(row_password$password_hash, password)
-        } else {
-          password_match <- FALSE
+        hash <- htpasswd_line$hashed_password
+
+        if (startsWith(hash, "$7$") && nchar(hash) == 101) {
+            requireNamespace("sodium")
+            if (sodium::password_verify(hash, password)) {
+                return(username)
+            } else {
+                return(NULL)
+            }
         }
 
-        if (password_match) {
-            username
-        } else {
-            NULL
+        if (startsWith(hash, "$2y$")) {
+            ## Assume bcrypt and `htpasswd -B`
+            substr(hash, 0, 4) <- "$2a$"
         }
+
+        if (startsWith(hash, "$2a$")) {
+            requireNamespace("bcrypt")
+            if (bcrypt::checkpw(password, hash)) {
+                return(username)
+            } else {
+                return(NULL)
+            }
+        }
+
+        stop(sprintf("Unsupported hash format in %s for user %s", path, username))
     })
 }
 
