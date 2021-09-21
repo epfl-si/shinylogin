@@ -208,15 +208,13 @@ passwordLoginServer <- function(id, auth, cookies = NULL, reload_on_logout=FALSE
             if (! is.null(cookies)) {
                 cookie <- cookies$create(user_id)
                 credentials$info <- c(credentials$info, cookie$info)
-                shinyjs::js$setcookie(cookie$sessionid)
+                shinyjs::js$shinylogin_setcookie(cookie$sessionid)
             }
         })
 
         ## Logout button
         shiny::observeEvent(input$button_logout, {
-            if (! is.null(cookies)) {
-                shinyjs::js$rmcookie()
-            }
+            if (! is.null(cookies)) shinyjs::js$shinylogin_rmcookie()
 
             if (reload_on_logout) {
                 session$reload()
@@ -237,7 +235,7 @@ passwordLoginServer <- function(id, auth, cookies = NULL, reload_on_logout=FALSE
 }
 
 passwordLoginServer__observeCookie <- function(input, cookies, credentials, auth_state) {
-    shinyjs::js$getcookie()
+    shinyjs::js$shinylogin_getcookie()
     ## This just tells JS to send the cookie to R. As per
     ## https://stackoverflow.com/a/34728125 here is how we get the
     ## response:
@@ -256,7 +254,7 @@ passwordLoginServer__observeCookie <- function(input, cookies, credentials, auth
 
         cookie_data <- cookies$retrieve(input$jscookie)
         if (is.null(cookie_data)) {
-            shinyjs::js$rmcookie()
+            shinyjs::js$shinylogin_rmcookie()
         } else {
             credentials$user_auth <- TRUE
             credentials$info <- cookie_data
