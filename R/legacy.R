@@ -112,21 +112,10 @@ legacy_loginServer <- function(id,
           if (nrow(cookie_data) != 1) {
             shinyjs::js$rmcookie()
           } else {
-            # if valid cookie, we reset it to update expiry date
-            .userid <- dplyr::pull(cookie_data, {{user_col}})
-            .sessionid <- randomString()
-
-            shinyjs::js$setcookie(.sessionid)
-
-            cookie_setter(.userid, .sessionid)
-
-            cookie_data <- utils::head(dplyr::filter(cookie_getter(), {{sessionid_col}} == .sessionid, {{user_col}} == .userid))
-
             credentials$user_auth <- TRUE
             credentials$info <- cookie_data
           }
         })
-
       }
 
       # possibility 2: login through login button
