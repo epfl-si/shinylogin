@@ -10,9 +10,7 @@
 
 #' @export
 passwordLogin <- function(auth, cookies = NULL) {
-    id_stem <- .ids$nextId()
-    login_id <- sprintf("%s_login", id_stem)
-    logout_id <- sprintf("%s_logout", id_stem)
+    id <- .ids$nextId()
 
     ## XXX OUCH
     ## Must be refactored inside `auth`, prior to being eliminated
@@ -29,20 +27,19 @@ passwordLogin <- function(auth, cookies = NULL) {
                            login_title = "Log in",
                            error_message = "Invalid username or password!",
                            additional_ui = NULL) {
-            passwordLoginUI(id = login_id, title, user_title, pass_title,
+            passwordLoginUI(id, title, user_title, pass_title,
                            login_title, error_message, additional_ui,
                            cookie_expiry = cookies$expiry_days)
         },
 
         logoutUI = function(label = "Log out", icon = NULL, class = "btn-danger",
                             style = "color: white;") {
-            legacy_logoutUI(id = logout_id, label, icon, class, style)
+            legacy_logoutUI(id, label, icon, class, style)
         },
 
         loginServer = function() {
-            loginServer <- legacy_loginServer(
-                id = login_id,
-
+            legacy_loginServer(
+                id = id,
                 ## XXX BEGINNING OF OUCH
                 ## Must be refactored inside `auth`, prior to being eliminated
                 data = user_base,
@@ -55,15 +52,7 @@ passwordLogin <- function(auth, cookies = NULL) {
                 sessionid_col = sessionid,
                 cookie_logins = TRUE,
                 cookie_getter = cookies$cookie_getter,
-                cookie_setter = cookies$cookie_setter,
-
-                log_out = reactive(logoutServer()))
-
-            logoutServer <- legacy_logoutServer(
-                id = logout_id,
-                active = reactive(loginServer()$user_auth))
-
-            loginServer
+                cookie_setter = cookies$cookie_setter)
         })
 }
 

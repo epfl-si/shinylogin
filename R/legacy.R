@@ -17,7 +17,6 @@ requireNamespace(c("shiny", "shinyjs", "dplyr"))
 #' @param user_col bare (unquoted) or quoted column name containing user names
 #' @param pwd_col bare (unquoted) or quoted column name containing passwords
 #' @param sodium_hashed have the passwords been hash encrypted using the sodium package? defaults to FALSE
-#' @param log_out [reactive] supply the returned reactive from \link{logoutServer} here to trigger a user logout
 #' @param reload_on_logout should app force a session reload on logout?
 #' @param cookie_logins enable automatic logins via browser cookies?
 #' @param sessionid_col bare (unquoted) or quoted column name containing session ids
@@ -37,7 +36,6 @@ legacy_loginServer <- function(id,
                         user_col,
                         pwd_col,
                         sodium_hashed = FALSE,
-                        log_out = shiny::reactiveVal(),
                         reload_on_logout = FALSE,
                         cookie_logins = FALSE,
                         sessionid_col,
@@ -80,7 +78,11 @@ legacy_loginServer <- function(id,
 
       credentials <- shiny::reactiveValues(user_auth = FALSE, info = NULL, cookie_already_checked = FALSE)
 
-      shiny::observeEvent(log_out(), {
+      shiny::observe({
+        shinyjs::toggle(id = "button_logout", condition = credentials$user_auth)
+      })
+
+      shiny::observeEvent(input$button_logout, {
         if (cookie_logins) {
           shinyjs::js$rmcookie()
         }
@@ -97,12 +99,12 @@ legacy_loginServer <- function(id,
       shiny::observe({
         if (cookie_logins) {
           if (credentials$user_auth) {
-            shinyjs::hide(id = "panel")
+            shinyjs::hide(id = "panel_login")
           } else if (credentials$cookie_already_checked) {
-            shinyjs::show(id = "panel")
+            shinyjs::show(id = "panel_login")
           }
         } else {
-          shinyjs::toggle(id = "panel", condition = !credentials$user_auth)
+          shinyjs::toggle(id = "panel_login", condition = !credentials$user_auth)
         }
       })
 
@@ -150,7 +152,7 @@ legacy_loginServer <- function(id,
       }
 
       # possibility 2: login through login button
-      shiny::observeEvent(input$button, {
+      shiny::observeEvent(input$button_login, {
 
         # check for match of input username to username column in data
         row_username <- which(dplyr::pull(data, {{user_col}}) == input$user_name)
@@ -213,38 +215,6 @@ legacy_logoutUI <- function(id, label = "Log out", icon = NULL, class = "btn-dan
   ns <- shiny::NS(id)
 
   shinyjs::hidden(
-    shiny::actionButton(ns("button"), label, icon = icon, class = class, style = style)
-  )
-}
-
-#' logout server module
-#'
-#' Shiny authentication module for use with \link{logoutUI}
-#'
-#' This module uses shiny's new \link[shiny]{moduleServer} method as opposed to the \link[shiny]{callModule}
-#' method used by the now deprecated \link{login} function and must be called differently in your app.
-#' For details on how to migrate see the 'Migrating from callModule to moduleServer' section of
-#' \href{https://shiny.rstudio.com/articles/modules.html}{Modularizing Shiny app code}.
-#'
-#' @param id An ID string that corresponds with the ID used to call the module's UI function
-#' @param active \code{reactive} supply the returned \code{user_auth} boolean reactive from \link{loginServer}
-#'   here to hide/show the logout button
-#' @param ... arguments passed to \link[shinyjs]{toggle}
-#'
-#' @return Reactive boolean, to be supplied as the \code{log_out} argument of the
-#'   \link{loginServer} module to trigger the logout process
-legacy_logoutServer <- function(id, active, ...) {
-  shiny::moduleServer(
-    id,
-    function (input, output, session) {
-      shiny::observe({
-        shinyjs::toggle(id = "button", condition = active(), ...)
-      })
-
-      # return reactive logout button tracker
-      shiny::reactive({
-        input$button
-      })
-    }
+    shiny::actionButton(ns("button_logout"), label, icon = icon, class = class, style = style)
   )
 }

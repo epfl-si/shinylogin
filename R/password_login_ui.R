@@ -26,19 +26,19 @@ passwordLoginUI <- function(id,
 
   shinyjs::hidden(
     shiny::div(
-      id = ns("panel"),
+      id = ns("panel_login"),
       style = "width: 500px; max-width: 100%; margin: 0 auto; padding: 20px;",
       shiny::wellPanel(
         shinyjs::useShinyjs(),
         passwordLoginUI__jscookie_script(),
         shinyjs::extendShinyjs(text = passwordLoginUI__js_cookie_to_r_code(ns("jscookie"), expire_days = cookie_expiry), functions = c("getcookie", "setcookie", "rmcookie")),
-        shinyjs::extendShinyjs(text = passwordLoginUI__js_return_click(ns("password"), ns("button")), functions = c()),
+        shinyjs::extendShinyjs(text = passwordLoginUI__js_return_click(ns("password"), ns("button_login")), functions = c()),
         shiny::tags$h2(title, class = "text-center", style = "padding-top: 0;"),
         shiny::textInput(ns("user_name"), shiny::tagList(shiny::icon("user"), user_title)),
         shiny::passwordInput(ns("password"), shiny::tagList(shiny::icon("unlock-alt"), pass_title)),
         shiny::div(
           style = "text-align: center;",
-          shiny::actionButton(ns("button"), login_title, class = "btn-primary", style = "color: white;")
+          shiny::actionButton(ns("button_login"), login_title, class = "btn-primary", style = "color: white;")
         ),
         additional_ui,
         shinyjs::hidden(
