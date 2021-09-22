@@ -49,10 +49,10 @@ ui <- dashboardPage(
 )
 
 server <- function(input, output, session) {
-  credentials <- login$loginServer()
+  user <- login$loginServer()
 
   observe({
-    if (credentials()$logged_in) {
+    if (user()$logged_in) {
       shinyjs::removeClass(selector = "body", class = "sidebar-collapse")
     } else {
       shinyjs::addClass(selector = "body", class = "sidebar-collapse")
@@ -60,10 +60,9 @@ server <- function(input, output, session) {
   })
 
   user_info <- reactive({
-      creds <- credentials()
-      req(creds$logged_in)
+      req(user()$logged_in)
 
-      do.call(tibble, creds$info) %>%
+      do.call(tibble, user()$info) %>%
           left_join(
               by = c("user"),
               user_base) %>%
