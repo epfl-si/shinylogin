@@ -52,7 +52,7 @@ server <- function(input, output, session) {
   credentials <- login$loginServer()
 
   observe({
-    if (credentials()$user_auth) {
+    if (credentials()$logged_in) {
       shinyjs::removeClass(selector = "body", class = "sidebar-collapse")
     } else {
       shinyjs::addClass(selector = "body", class = "sidebar-collapse")
@@ -61,7 +61,7 @@ server <- function(input, output, session) {
 
   user_info <- reactive({
       creds <- credentials()
-      req(creds$user_auth)
+      req(creds$logged_in)
 
       do.call(tibble, creds$info) %>%
           left_join(
