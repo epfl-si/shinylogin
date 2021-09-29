@@ -27,7 +27,7 @@ ui <- dashboardPage(
       class = "dropdown",
       tags$a(
         icon("github"),
-        href = "https://github.com/paulc91/shinylogin",
+        href = "https://github.com/epfl-si/shinylogin",
         title = "See the code on github"
       )
     )
