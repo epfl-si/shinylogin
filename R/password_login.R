@@ -33,7 +33,7 @@ passwordLogin <- function(auth, cookies = NULL) {
         loginServer = function() {
             passwordLoginServer(
                 id = id,
-                auth = auth,
+                checkPassword = auth$checkPassword,
                 cookies = cookies)
         })
 }
@@ -157,24 +157,30 @@ inMemoryCookieStore <- function(expire_days = 7) {
 #' \href{https://shiny.rstudio.com/articles/modules.html}{Modularizing Shiny app code}.
 #'
 #' @param id 	An ID string that corresponds with the ID used to call the module's UI function
-#' @param auth  An object returned by e.g. \link{htpasswdAuth}
+#' @param checkPassword  A function that takes login and password, and returns either NULL for login failure, or user information as a list
 #' @param cookies  An object returned by e.g. \link{inMemoryCookieStore}, or NULL if no persistent session mechanism is to be used
 #' @param reload_on_logout should app force a session reload on logout?
 #'
-#' @return The module will return a reactive 2 element list to your main application.
-#'   First element \code{logged_in} is a boolean indicating whether there has been
-#'   a successful login or not. Second element \code{info} will be the data frame provided
-#'   to the function, filtered to the row matching the successfully logged in username.
-#'   When \code{logged_in} is FALSE \code{info} is NULL.
+#' @return A `server` object. The authentication state is available
+#'     through the reactive variable `server$user()` which itself is
+#'     an object having `server$user()$logged_in`, a boolean
+#'     indicating whether there has been a successful login or not;
+#'     and `server$user()$info`, which will be either the return value
+#'     of `checkPassword` (if the `cookie` parameter is missing or
+#'     NULL), the return value of `cookie$retrieve` (if `cookie` is
+#'     non-NULL and the browser presented a valid cookie), or the
+#'     union (performed with `c()` of the return values of
+#'     `checkPassword` and `cookie$create` (if `cookie` is non-NULL
+#'     and the browser did not present a valid cookie).
 #'
 #' @importFrom rlang :=
 #'
-passwordLoginServer <- function(id, auth, cookies = NULL, reload_on_logout=FALSE) {
+passwordLoginServer <- function(id, checkPassword, cookies = NULL, reload_on_logout=FALSE) {
   shiny::moduleServer(
     id,
     function(input, output, session) {
-        ## The state we'll be sharing with the user:
-        credentials <- shiny::reactiveValues(logged_in = FALSE, info = NULL)
+        ## The state we'll be sharing with the caller:
+        user <- shiny::reactiveValues(logged_in = FALSE, info = NULL)
         ## We want to avoid flashing a useless login prompt if we have a
         ## valid cookie, but at session initialization time we can't know
         ## immediately whether that will the case. Note that this
@@ -184,18 +190,18 @@ passwordLoginServer <- function(id, auth, cookies = NULL, reload_on_logout=FALSE
 
         ## Synchronize visibility of the login / logout controls
         shiny::observe({
-            shinyjs::toggle(id = "button_logout", condition = .auth_state$settled && credentials$logged_in)
-            shinyjs::toggle(id = "panel_login", condition = .auth_state$settled && !credentials$logged_in)
+            shinyjs::toggle(id = "button_logout", condition = .auth_state$settled && user$logged_in)
+            shinyjs::toggle(id = "panel_login", condition = .auth_state$settled && !user$logged_in)
         })
 
         ## possibility 1: login through a cookie
         if (! is.null(cookies)) {
-            passwordLoginServer__observeCookie(input, cookies, credentials, .auth_state)
+            passwordLoginServer__observeCookie(input, cookies, user, .auth_state)
         }
 
         ## possibility 2: login through login button
         shiny::observeEvent(input$button_login, {
-            user_id <- auth$checkPassword(input$user_name, input$password)
+            user_id <- checkPassword(input$user_name, input$password)
             if (is.null(user_id)) {
                 ## Send “wrong password” UI events down the websocket:
                 shinyjs::toggle(id = "error", anim = TRUE, time = 1, animType = "fade")
@@ -203,11 +209,11 @@ passwordLoginServer <- function(id, auth, cookies = NULL, reload_on_logout=FALSE
                 return()
             }
 
-            credentials$logged_in <- TRUE
-            credentials$info <- list(user = user_id)
+            user$logged_in <- TRUE
+            user$info <- list(user = user_id)
             if (! is.null(cookies)) {
                 cookie <- cookies$create(user_id)
-                credentials$info <- c(credentials$info, cookie$info)
+                user$info <- c(user$info, cookie$info)
                 shinyjs::js$shinylogin_setcookie(cookie$sessionid)
             }
         })
@@ -220,21 +226,21 @@ passwordLoginServer <- function(id, auth, cookies = NULL, reload_on_logout=FALSE
                 session$reload()
             } else {
                 shiny::updateTextInput(session, "password", value = "")
-                credentials$logged_in <- FALSE
-                credentials$info <- NULL
+                user$logged_in <- FALSE
+                user$info <- NULL
             }
         })
 
 
-        ## return reactive list containing auth boolean and user information
-        shiny::reactive({
-            shiny::reactiveValuesToList(credentials)
-        })
+        ## return object w/ reactive list
+        list(user = shiny::reactive({
+                    shiny::reactiveValuesToList(user)
+        }))
     }
   )
 }
 
-passwordLoginServer__observeCookie <- function(input, cookies, credentials, auth_state) {
+passwordLoginServer__observeCookie <- function(input, cookies, user, auth_state) {
     shinyjs::js$shinylogin_getcookie()
     ## This just tells JS to send the cookie to R. As per
     ## https://stackoverflow.com/a/34728125 here is how we get the
@@ -247,7 +253,7 @@ passwordLoginServer__observeCookie <- function(input, cookies, credentials, auth
 
         ## Stop now if cookie is a dud for any reason:...
         shiny::req(
-                   credentials$logged_in == FALSE,     ## ... if already logged in,
+                   user$logged_in == FALSE,     ## ... if already logged in,
                    is.null(input$jscookie) == FALSE,   ## ... if no cookie,
                    nchar(input$jscookie) > 0           ## ... if cookie is empty
                )
@@ -256,8 +262,8 @@ passwordLoginServer__observeCookie <- function(input, cookies, credentials, auth
         if (is.null(cookie_data)) {
             shinyjs::js$shinylogin_rmcookie()
         } else {
-            credentials$logged_in <- TRUE
-            credentials$info <- cookie_data
+            user$logged_in <- TRUE
+            user$info <- cookie_data
         }
     })
 }
