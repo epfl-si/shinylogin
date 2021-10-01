@@ -3,4 +3,4 @@
 export(htpasswdAuth)
 export(inMemoryCookieStore)
 export(passwordLogin)
-importFrom(rlang,":=")
+importFrom(promises,"%...>%")

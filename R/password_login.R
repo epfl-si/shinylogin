@@ -8,6 +8,8 @@
 #' has the capability to persistently remember who is who using HTTP cookies.
 #' However, computing permissions is on you, the app author.
 
+requireNamespace(c("promises", "shiny", "shinyjs"))
+
 #' Combined UI and server for password-based login
 #'
 #' @param auth     An object returned by e.g. \link{htpasswdAuth} with a `checkPassword` method
@@ -169,7 +171,7 @@ inMemoryCookieStore <- function(expire_days = 7) {
 #' \href{https://shiny.rstudio.com/articles/modules.html}{Modularizing Shiny app code}.
 #'
 #' @param id 	An ID string that corresponds with the ID used to call the module's UI function
-#' @param checkPassword  A function that takes login and password, and returns either NULL for login failure, or user information as a list
+#' @param checkPassword  A function that takes login and password, and returns either NULL for login failure, or user information as a list, or a promise to either of the above
 #' @param cookies  An object returned by e.g. \link{inMemoryCookieStore}, or NULL if no persistent session mechanism is to be used
 #' @param reload_on_logout should app force a session reload on logout?
 #'
@@ -184,7 +186,7 @@ inMemoryCookieStore <- function(expire_days = 7) {
 #'     `checkPassword` and `cookie$create` (if `cookie` is non-NULL
 #'     and the browser did not present a valid cookie).
 #'
-#' @importFrom rlang :=
+#' @importFrom promises %...>%
 #'
 serve_password_login <- function(input, output, session, checkPassword, cookies = NULL, reload_on_logout = FALSE) {
     user <- serve_shinylogin()
@@ -208,20 +210,23 @@ serve_password_login <- function(input, output, session, checkPassword, cookies 
 
     ## possibility 2: login through login button
     shiny::observeEvent(input$button_login, {
-        user_id <- checkPassword(input$user_name, input$password)
-        if (is.null(user_id)) {
-            ## Send “wrong password” UI events down the websocket:
-            shinyjs::toggle(id = "error", anim = TRUE, time = 1, animType = "fade")
-            shinyjs::delay(5000, shinyjs::toggle(id = "error", anim = TRUE, time = 1, animType = "fade"))
-            return()
-        }
-
-        user$logged_in <- TRUE
-        user$info <- list(user = user_id)
-        if (! is.null(cookies)) {
-            cookie <- cookies$create(user_id)
-            user$info <- c(user$info, cookie$info)
-            shinyjs::js$shinylogin_setcookie(cookie$sessionid)
+        promises::future_promise(checkPassword(input$user_name, input$password)) %...>% {
+            user_id <- .
+            if (is.null(user_id)) {
+                ## Send “wrong password” UI events down the websocket:
+                shinyjs::toggle(id = "error", anim = TRUE, time = 1, animType = "fade")
+                shinyjs::delay(5000, shinyjs::toggle(id = "error", anim = TRUE, time = 1, animType = "fade"))
+            } else {
+                user$logged_in <- TRUE
+                user$info <- list(user = user_id)
+                if (! is.null(cookies)) {
+                    promises::future_promise(cookies$create(user_id)) %...>% {
+                        cookie <- .
+                        user$info <- c(user$info, cookie$info)
+                        shinyjs::js$shinylogin_setcookie(cookie$sessionid)
+                    }
+                }
+            }
         }
     })
 
@@ -259,12 +264,14 @@ passwordLoginServer__observeCookie <- function(input, cookies, user, auth_state)
                    nchar(input$jscookie) > 0           ## ... if cookie is empty
                )
 
-        cookie_data <- cookies$retrieve(input$jscookie)
-        if (is.null(cookie_data)) {
-            shinyjs::js$shinylogin_rmcookie()
-        } else {
-            user$logged_in <- TRUE
-            user$info <- cookie_data
+        promises::future_promise(cookies$retrieve(input$jscookie)) %...>% {
+            cookie_data <- .
+            if (is.null(cookie_data)) {
+                shinyjs::js$shinylogin_rmcookie()
+            } else {
+                user$logged_in <- TRUE
+                user$info <- cookie_data
+            }
         }
     })
 }
