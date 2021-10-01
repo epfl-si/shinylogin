@@ -1,16 +1,16 @@
-#' Password-based login UI and server-side code, with cookies as a side serving
+# password_login.R: Password-based login UI and server-side code, with cookies as a side serving
+
+requireNamespace(c("promises", "shiny", "shinyjs"))
+
+#' Combined UI and server for password-based login
 #'
 #' The UI for the login form shows traditional login and password
 #' fields. The shiny server is responsible for manipulating the
 #' password, checking it, and computing user information like
 #' permission levels. The shinylogin package does provide help for the
-#' first two tasks, by means of `auth` helpers; it also
-#' has the capability to persistently remember who is who using HTTP cookies.
+#' first two tasks, by means of `auth` helpers; it also has the
+#' capability to persistently remember who is who using HTTP cookies.
 #' However, computing permissions is on you, the app author.
-
-requireNamespace(c("promises", "shiny", "shinyjs"))
-
-#' Combined UI and server for password-based login
 #'
 #' @param auth     An object returned by e.g. \link{htpasswdAuth} with a `checkPassword` method
 #' @param cookies  An object returned by e.g. \link{inMemoryCookieStore}, or NULL if no persistent session mechanism is to be used

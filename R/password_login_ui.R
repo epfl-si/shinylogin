@@ -1,4 +1,4 @@
-#' Shiny UI modules for when the user must type in their password directly into the R application
+# Shiny UI for when the user must type in their password directly into the R application
 
 requireNamespace(c("glue", "shiny", "shinyjs"))
 
