@@ -33,7 +33,7 @@ passwordLogin <- function(auth, cookies = NULL, reload_on_logout = FALSE) {
 
         logoutUI = function(label = "Log out", icon = NULL, class = "btn-danger",
                             style = "color: white;") {
-            passwordLogoutUI(id, label, icon, class, style)
+            logoutUI(id, label, icon, class, style)
         },
 
         loginServer = function() {
@@ -187,8 +187,8 @@ inMemoryCookieStore <- function(expire_days = 7) {
 #' @importFrom rlang :=
 #'
 serve_password_login <- function(input, output, session, checkPassword, cookies = NULL, reload_on_logout = FALSE) {
-    ## The state we'll be sharing with the caller:
-    user <- shiny::reactiveValues(logged_in = FALSE, info = NULL)
+    user <- serve_shinylogin()
+
     ## We want to avoid flashing a useless login prompt if we have a
     ## valid cookie, but at session initialization time we can't know
     ## immediately whether that will the case. Note that this
@@ -196,9 +196,8 @@ serve_password_login <- function(input, output, session, checkPassword, cookies 
     ## over the websocket:
     .auth_state <- shiny::reactiveValues(settled = is.null(cookies))
 
-    ## Synchronize visibility of the login / logout controls
+    ## Synchronize visibility of the login panel
     shiny::observe({
-        shinyjs::toggle(id = "button_logout", condition = .auth_state$settled && user$logged_in)
         shinyjs::toggle(id = "panel_login", condition = .auth_state$settled && !user$logged_in)
     })
 

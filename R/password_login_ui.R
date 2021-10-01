@@ -95,20 +95,3 @@ passwordLoginUI <- function(id,
     )
   )
 }
-
-#' Shiny UI module for the “log out” button
-#'
-#' @param id An ID string that corresponds with the ID used to call the module's server function
-#' @param label label for the logout button
-#' @param icon An optional \code{\link[shiny]{icon}} to appear on the button.
-#' @param class bootstrap class for the logout button
-#' @param style css styling for the logout button
-#'
-#' @return Shiny UI action button
-passwordLogoutUI <- function(id, label = "Log out", icon = NULL, class = "btn-danger", style = "color: white;") {
-  ns <- shiny::NS(id)
-
-  shinyjs::hidden(
-    shiny::actionButton(ns("button_logout"), label, icon = icon, class = class, style = style)
-  )
-}
