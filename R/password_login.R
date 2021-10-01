@@ -13,11 +13,11 @@ requireNamespace(c("promises", "shiny", "shinyjs"))
 #' However, computing permissions is on you, the app author.
 #'
 #' @param auth     An object returned by e.g. \link{htpasswdAuth} with a `checkPassword` method
-#' @param cookies  An object returned by e.g. \link{inMemoryCookieStore}, or NULL if no persistent session mechanism is to be used
+#' @param cookie_store  An object returned by e.g. \link{inMemoryCookieStore}, or NULL if no persistent session mechanism is to be used
 #' @param reload_on_logout should app force a session reload on logout?
 #'
 #' @export
-passwordLogin <- function(auth, cookies = NULL, reload_on_logout = FALSE) {
+passwordLogin <- function(auth, cookie_store = NULL, reload_on_logout = FALSE) {
     id <- .ids$nextId()
 
     list(
@@ -30,7 +30,7 @@ passwordLogin <- function(auth, cookies = NULL, reload_on_logout = FALSE) {
                            additional_ui = NULL) {
             passwordLoginUI(id, title, user_title, pass_title,
                            login_title, error_message, additional_ui,
-                           cookie_expire_days = cookies$expire_days)
+                           cookie_expire_days = cookie_store$expire_days)
         },
 
         logoutUI = function(label = "Log out", icon = NULL, class = "btn-danger",
@@ -44,7 +44,7 @@ passwordLogin <- function(auth, cookies = NULL, reload_on_logout = FALSE) {
                 function(input, output, session) {
                     user <- serve_password_login(
                         input, output, session,
-                        auth$checkPassword, cookies, reload_on_logout)
+                        auth$checkPassword, cookie_store, reload_on_logout)
 
                     ## return object w/ reactive list
                     list(user = shiny::reactive({
@@ -113,54 +113,6 @@ htpasswdAuth <- function(path) {
     })
 }
 
-#' @export
-inMemoryCookieStore <- function(expire_days = 7) {
-    requireNamespace(c("DBI", "RSQLite", "lubridate", "tibble", "dplyr"))
-
-    db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
-    DBI::dbCreateTable(db, "sessions", c(user = "TEXT", sessionid = "TEXT", login_time = "TEXT"))
-
-    randomString <- function(n = 64) {
-        paste(
-            sample(x = c(letters, LETTERS, 0:9), size = n, replace = TRUE),
-            collapse = "")
-    }
-
-    cookie_getter = function() {
-        all_cookies <- DBI::dbReadTable(db, "sessions")
-        all_cookies <- tibble::as_tibble(dplyr::mutate(all_cookies, login_time = lubridate::ymd_hms(login_time)))
-        dplyr::filter(all_cookies, login_time > lubridate::now() - lubridate::days(expire_days))
-    }
-
-    cookie_setter = function(user, sessionid) {
-        new_cookie <- tibble::tibble(user = user, sessionid = sessionid, login_time = as.character(lubridate::now()))
-        DBI::dbWriteTable(db, "sessions", new_cookie, append = TRUE)
-    }
-
-    list(
-        expire_days = expire_days,
-
-        create = function(user_id) {
-            sessionid_ <- randomString()
-            cookie_setter(user_id, sessionid_)
-            info <- dplyr::filter(cookie_getter(), sessionid == sessionid_)
-            if (nrow(info) == 1) {
-                list(
-                    sessionid = sessionid_,
-                    info = dplyr::select(info, -user))
-            }
-        },
-
-        retrieve = function(session_id) {
-            cookie_tibble <- dplyr::filter(cookie_getter(), sessionid == session_id)
-            if (nrow(cookie_tibble) == 1) {
-                cookie_tibble
-            } else {
-                NULL
-            }
-        })
-}
-
 #' Body of the `$loginServer` returned by \link{passwordLogin}
 #'
 #' This module uses shiny's new \link[shiny]{moduleServer} method as opposed to the \link[shiny]{callModule}
@@ -170,7 +122,7 @@ inMemoryCookieStore <- function(expire_days = 7) {
 #'
 #' @param id 	An ID string that corresponds with the ID used to call the module's UI function
 #' @param checkPassword  A function that takes login and password, and returns either NULL for login failure, or user information as a list, or a promise to either of the above
-#' @param cookies  An object returned by e.g. \link{inMemoryCookieStore}, or NULL if no persistent session mechanism is to be used
+#' @param cookie_store  An object returned by e.g. \link{inMemoryCookieStore}, or NULL if no persistent session mechanism is to be used
 #' @param reload_on_logout should app force a session reload on logout?
 #'
 #' @return A `shiny::ReactivValues` object `user` having
@@ -186,27 +138,24 @@ inMemoryCookieStore <- function(expire_days = 7) {
 #'
 #' @importFrom promises %...>%
 #'
-serve_password_login <- function(input, output, session, checkPassword, cookies = NULL, reload_on_logout = FALSE) {
+serve_password_login <- function(input, output, session, checkPassword, cookie_store = NULL, reload_on_logout = FALSE) {
     user <- serve_shinylogin()
 
-    ## We want to avoid flashing a useless login prompt if we have a
-    ## valid cookie, but at session initialization time we can't know
-    ## immediately whether that will the case. Note that this
-    ## reactiveValue is kept on the server side and not transmitted
-    ## over the websocket:
-    .auth_state <- shiny::reactiveValues(settled = is.null(cookies))
-
-    ## Synchronize visibility of the login panel
-    shiny::observe({
-        shinyjs::toggle(id = "panel_login", condition = .auth_state$settled && !user$logged_in)
-    })
-
-    ## possibility 1: login through a cookie
-    if (! is.null(cookies)) {
-        passwordLoginServer__observeCookie(input, cookies, user, .auth_state)
+    if (! is.null(cookie_store)) {
+        cookies <- serve_cookie_login(input, cookie_store, user)
+    } else {
+        cookies <- NULL
     }
 
-    ## possibility 2: login through login button
+    ## Synchronize visibility of the login panel. We want to avoid flashing
+    ## a useless login prompt when we have a valid cookie:
+    shiny::observe({
+        shinyjs::toggle(
+                     id = "panel_login",
+                     condition = (is.null(cookies) || cookies$settled()) &&
+                         user$logged_in == FALSE)
+    })
+
     shiny::observeEvent(input$button_login, {
         promises::future_promise(checkPassword(input$user_name, input$password)) %...>% {
             user_id <- .
@@ -218,20 +167,21 @@ serve_password_login <- function(input, output, session, checkPassword, cookies 
                 user$logged_in <- TRUE
                 user$info <- list(user = user_id)
                 if (! is.null(cookies)) {
-                    promises::future_promise(cookies$create(user_id)) %...>% {
-                        cookie <- .
-                        user$info <- c(user$info, cookie$info)
-                        shinyjs::js$shinylogin_setcookie(cookie$sessionid)
+                    cookies$save(user$info) %...>% {
+                        ## Augment state with anything the cookie store wants to add
+                        ## (e.g. date of creation / expiration):
+                        user$info <- c(user$info, .)
                     }
                 }
             }
         }
     })
 
-    ## Logout button
+    ## Logout button clears the cookie (if any), reloads (if requested)
     shiny::observeEvent(input$button_logout, {
-        if (! is.null(cookies)) shinyjs::js$shinylogin_rmcookie()
+        if (! is.null(cookies)) cookies$clear()
 
+        ## TODO: this races with clearing the cookie.
         if (reload_on_logout) {
             session$reload()
         } else {
@@ -242,34 +192,4 @@ serve_password_login <- function(input, output, session, checkPassword, cookies 
     })
 
     user
-}
-
-passwordLoginServer__observeCookie <- function(input, cookies, user, auth_state) {
-    shinyjs::js$shinylogin_getcookie()
-    ## This just tells JS to send the cookie to R. As per
-    ## https://stackoverflow.com/a/34728125 here is how we get the
-    ## response:
-    shiny::observeEvent(input$jscookie, {
-        ## Regardless of the outcome below, by the end of this “game
-        ## turn” of the async event loop, it will be time to show
-        ## either the login or the logout UI:
-        auth_state$settled <- TRUE
-
-        ## Stop now if cookie is a dud for any reason:...
-        shiny::req(
-                   user$logged_in == FALSE,     ## ... if already logged in,
-                   is.null(input$jscookie) == FALSE,   ## ... if no cookie,
-                   nchar(input$jscookie) > 0           ## ... if cookie is empty
-               )
-
-        promises::future_promise(cookies$retrieve(input$jscookie)) %...>% {
-            cookie_data <- .
-            if (is.null(cookie_data)) {
-                shinyjs::js$shinylogin_rmcookie()
-            } else {
-                user$logged_in <- TRUE
-                user$info <- cookie_data
-            }
-        }
-    })
 }

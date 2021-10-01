@@ -6,7 +6,7 @@ library(glue)
 
 login <- shinylogin::passwordLogin(
   auth = shinylogin::htpasswdAuth(system.file("shiny-examples/htpasswd", package = "shinylogin")),
-  cookies = shinylogin::inMemoryCookieStore(expire_days = 7))
+  cookie_store = shinylogin::inMemoryCookieStore(expire_days = 7))
 
 user_base <- tibble(
   user = c("user1", "user2"),
