@@ -81,9 +81,7 @@ htpasswdAuth <- function(path) {
     }
 
     list(checkPassword = function(username, password) {
-        htpasswd_line <- read.csv(path, sep=":", header = FALSE,
-                                  col.names = c("user", "hashed_password")
-                                  )[which(htpasswd$user == username),]
+        htpasswd_line <- htpasswd[which(htpasswd$user == username),]
         if (nrow(htpasswd_line) != 1) return(NULL)
 
         hash <- htpasswd_line$hashed_password
