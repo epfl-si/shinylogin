@@ -54,14 +54,6 @@ passwordLogin <- function(auth, cookie_store = NULL, reload_on_logout = FALSE) {
         })
 }
 
-newIDSequence <- function(stem) {
-    uniqueID <- 0
-    list(nextId = function() {
-        uniqueID <<- uniqueID + 1
-        sprintf("%s_%d", stem, uniqueID)
-    })
-}
-
 .ids <- newIDSequence("passwordLogin")
 
 #' Authenticate users out of a bcrypt htpasswd file

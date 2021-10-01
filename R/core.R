@@ -94,3 +94,11 @@ serve_shinylogin <- function(input, output, session, reload_on_logout = FALSE) {
     func <- promises:::pipeify_rhs(parts[[3L]], env)
     promises::then(lhs, func)
 }
+
+newIDSequence <- function(stem) {
+    uniqueID <- 0
+    list(nextId = function() {
+        uniqueID <<- uniqueID + 1
+        sprintf("%s_%d", stem, uniqueID)
+    })
+}
