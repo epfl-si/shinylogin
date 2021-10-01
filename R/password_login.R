@@ -157,7 +157,7 @@ serve_password_login <- function(input, output, session, checkPassword, cookie_s
     })
 
     shiny::observeEvent(input$button_login, {
-        promises::future_promise(checkPassword(input$user_name, input$password)) %...>% {
+        make_promise(checkPassword(input$user_name, input$password)) %...>% {
             user_id <- .
             if (is.null(user_id)) {
                 ## Send “wrong password” UI events down the websocket:

@@ -38,3 +38,12 @@ serve_shinylogin <- function() {
 
     user
 }
+
+#' @return p if p is convertible to a promise; otherwise, a promise that resolves to p.
+make_promise <- function(p) {
+    if (promises::is.promising(p)) {
+        p
+    } else {
+        promises::promise_resolve(p)
+    }
+}

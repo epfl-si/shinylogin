@@ -28,13 +28,13 @@ serve_cookie_login <- function(input, cookie_store, user) {
                    nchar(input$jscookie) > 0           ## ... if cookie is empty
                )
 
-        promises::future_promise(cookie_store$retrieve(input$jscookie)) %...>% {
-            cookie_data <- .
-            if (is.null(cookie_data)) {
+        make_promise(cookie_store$retrieve(input$jscookie)) %...>% {
+            cookie <- .
+            if (is.null(cookie)) {
                 shinyjs::js$shinylogin_rmcookie()
             } else {
                 user$logged_in <- TRUE
-                user$info <- cookie_data
+                user$info <- cookie
             }
         }
     })
@@ -42,10 +42,9 @@ serve_cookie_login <- function(input, cookie_store, user) {
     list(
         settled = settled,
         save = function(user_info) {
-            promises::future_promise(cookie_store$create(user_info$user)) %...>% {
-                cookie <- .
-                shinyjs::js$shinylogin_setcookie(cookie$sessionid)
-                cookie$info
+            make_promise(cookie_store$create(user_info$user)) %...>% {
+                shinyjs::js$shinylogin_setcookie(.$sessionid)
+                .$info
             }
         },
         clear = function() {
