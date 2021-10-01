@@ -14,7 +14,7 @@ requireNamespace(c("promises", "glue", "shiny", "shinyjs"))
 #'
 #' @param auth     An object returned by e.g. \link{htpasswdAuth} with a `checkPassword` method
 #' @param cookie_store  An object returned by e.g. \link{inMemoryCookieStore}, or NULL if no persistent session mechanism is to be used
-#' @param reload_on_logout should app force a session reload on logout?
+#' @param reload_on_logout Whether the app force a session reload on logout, as a Boolean
 #'
 #' @export
 passwordLogin <- function(auth, cookie_store = NULL, reload_on_logout = FALSE) {
@@ -115,7 +115,7 @@ htpasswdAuth <- function(path) {
 #' @param id 	An ID string that corresponds with the ID used to call the module's UI function
 #' @param checkPassword  A function that takes login and password, and returns either NULL for login failure, or user information as a list, or a promise to either of the above
 #' @param cookie_store  An object returned by e.g. \link{inMemoryCookieStore}, or NULL if no persistent session mechanism is to be used
-#' @param reload_on_logout should app force a session reload on logout?
+#' @param reload_on_logout Whether the app force a session reload on logout, as a Boolean
 #'
 #' @return The `user` object from \link{serve_shinylogin}
 #'

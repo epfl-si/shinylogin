@@ -23,7 +23,7 @@ logoutUI <- function(id, label = "Log out", icon = NULL, class = "btn-danger", s
 
 #' The rock bottom basics of a shinylogin server
 #'
-#' @param reload_on_logout should app force a session reload on logout?
+#' @param reload_on_logout Whether the app force a session reload on logout, as a Boolean
 #'
 #' @return A `shiny::ReactiveValues` object `user`, with the following fields and methods:
 #'     - `user$state()` — A read-only reactive variable containing the following fields:
