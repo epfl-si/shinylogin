@@ -23,13 +23,15 @@ logoutUI <- function(id, label = "Log out", icon = NULL, class = "btn-danger", s
 
 #' The rock bottom basics of a shinylogin server
 #'
+#' @param reload_on_logout should app force a session reload on logout?
+#'
 #' @return A `shiny::ReactiveValues` object `user`, with the following fields and methods:
 #'     - `user$state()` — A read-only reactive variable containing the following fields:
 #'     - `user$state()$logged_in` — A boolean indicating whether there has been a successful login or not
 #'     - `user$state()$info` — Personal information about the logged-in user
 #'     - `user$addLoginDetails(lst)` — Add the items of `lst` to `user$info`. If said `user$info$user` exists afterwards, set `user$state()$logged_in`
 #'     - `user$logout()` — Unset `user$info` and set `user$state()$logged_in` to `FALSE`
-serve_shinylogin <- function() {
+serve_shinylogin <- function(input, output, session, reload_on_logout = FALSE) {
     user <- shiny::reactiveValues(logged_in = FALSE, info = NULL)
 
     ## Log out button is visible iff the user is logged in. (Harmless
@@ -37,6 +39,28 @@ serve_shinylogin <- function() {
     shiny::observe({
         shinyjs::toggle(id = .button_logout_ID, condition = user$logged_in)
     })
+
+    ## Logout sequence
+    logout_callbacks <- list()  # Last-in, first-out
+    onLogout <- function(expr) {
+        logout_callbacks <<- c(list(enquo(expr)), logout_callbacks)
+    }
+    if (reload_on_logout) {
+        onLogout({ session$reload() })
+    }
+    logout <- function() {
+        work <- promises::promise_resolve(TRUE)
+        for(quosure in logout_callbacks) {
+            work <- promises::`%...>%`(work, { rlang::eval_tidy(quosure) })
+        }
+        work <- promises::`%...>%`(work, {
+            user$info <- NULL
+            user$logged_in <- FALSE
+        })
+    }
+
+    ## Log out button triggers logout sequence
+    shiny::observeEvent(input$button_logout, { logout() })
 
     list(
         state = shiny::reactive({ shiny::reactiveValuesToList(user) }),
@@ -52,10 +76,8 @@ serve_shinylogin <- function() {
             }
         },
 
-        logout = function() {
-            user$info <- NULL
-            user$logged_in <- FALSE
-        }
+        onLogout = onLogout,
+        logout = logout
     )
 }
 

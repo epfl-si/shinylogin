@@ -127,7 +127,7 @@ htpasswdAuth <- function(path) {
 #'
 #' @importFrom promises %...>%
 serve_password_login <- function(input, output, session, checkPassword, cookie_store = NULL, reload_on_logout = FALSE) {
-    user <- serve_shinylogin()
+    user <- serve_shinylogin(input, output, session, reload_on_logout = reload_on_logout)
 
     if (! is.null(cookie_store)) {
         cookies <- serve_cookie_login(input, cookie_store, user)
@@ -160,17 +160,8 @@ serve_password_login <- function(input, output, session, checkPassword, cookie_s
         }
     })
 
-    ## Logout button clears the cookie (if any), reloads (if requested)
-    shiny::observeEvent(input$button_logout, {
-        if (! is.null(cookies)) cookies$clear()
-
-        ## TODO: this races with clearing the cookie.
-        if (reload_on_logout) {
-            session$reload()
-        } else {
-            shiny::updateTextInput(session, "password", value = "")
-            user$logout()
-        }
+    if (! reload_on_logout) user$onLogout({
+        shiny::updateTextInput(session, "password", value = "")
     })
 
     user

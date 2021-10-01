@@ -29,6 +29,8 @@ serve_cookie_login <- function(input, cookie_store, user) {
             }
         })
 
+    user$onLogout({ shinyjs::js$shinylogin_rmcookie() })
+
     list(
         settled = settled,
         save = function(user_info) {
@@ -37,9 +39,7 @@ serve_cookie_login <- function(input, cookie_store, user) {
                 .$info
             }
         },
-        clear = function() {
-            shinyjs::js$shinylogin_rmcookie()
-        })
+        clear = shinyjs::js$shinylogin_rmcookie)
 }
 
 #' Asynchronously load the data for `jscookie` out of `cookie_store` into `user`
