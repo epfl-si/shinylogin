@@ -16,23 +16,15 @@ serve_cookie_login <- function(input, cookie_store, user) {
     shiny::observeEvent(
         input$jscookie,
         {
-            if (user$logged_in ||                      ## e.g. receiving a cookie we just set
-                ! shiny::isTruthy(input$jscookie)) {   ## e.g. no cookie
+            if (user$logged_in) {
+                ## E.g. receiving a cookie we just set
+                settled(TRUE)
+            } else if (! shiny::isTruthy(input$jscookie)) {
+                ## E.g. no cookie
                 settled(TRUE)
             } else {
                 promises::finally(
-                    ## Look up cookie in DB...
-                    cookie_store$retrieve(input$jscookie) %then% {
-                        stored_auth_data <- .
-                        if (shiny::isTruthy(stored_auth_data)) {
-                            user$logged_in <- TRUE
-                            user$info <- stored_auth_data
-                        } else {
-                            ## Stale or forged cookie; delete it
-                            shinyjs::js$shinylogin_rmcookie()
-                        }
-                    },
-                    ## ... then settle (regardless of success)
+                    async_load_cookie_data(cookie_store, input$jscookie, user),
                     ~{ settled(TRUE) })
             }
         })
@@ -48,6 +40,21 @@ serve_cookie_login <- function(input, cookie_store, user) {
         clear = function() {
             shinyjs::js$shinylogin_rmcookie()
         })
+}
+
+#' Asynchronously load the data for `jscookie` out of `cookie_store` into `user`
+#'
+#' If the fetch fails, delete the (therefore invalid) cookie in the client
+async_load_cookie_data <- function(cookie_store, jscookie, user) {
+    cookie_store$retrieve(jscookie) %then% {
+        stored_auth_data <- .
+        if (shiny::isTruthy(stored_auth_data)) {
+            user$logged_in <- TRUE
+            user$info <- stored_auth_data
+        } else {
+            shinyjs::js$shinylogin_rmcookie()
+        }
+    }
 }
 
 #' @export
