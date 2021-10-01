@@ -13,29 +13,29 @@ serve_cookie_login <- function(input, cookie_store, user) {
     ## This just tells JS to send the cookie to R. As per
     ## https://stackoverflow.com/a/34728125 here is how we get the
     ## response:
-    shiny::observeEvent(input$jscookie, {
-        ## Regardless of the outcome below, by the end of this “game
-        ## turn” of the async event loop, it will be time to show
-        ## either the login or the logout UI:
-        settled(TRUE)
-
-        ## Stop now if cookie is a dud for any reason:...
-        shiny::req(
-                   user$logged_in == FALSE,     ## ... if already logged in,
-                   is.null(input$jscookie) == FALSE,   ## ... if no cookie,
-                   nchar(input$jscookie) > 0           ## ... if cookie is empty
-               )
-
-        cookie_store$retrieve(input$jscookie) %then% {
-            cookie <- .
-            if (is.null(cookie)) {
-                shinyjs::js$shinylogin_rmcookie()
+    shiny::observeEvent(
+        input$jscookie,
+        {
+            if (user$logged_in ||                      ## e.g. receiving a cookie we just set
+                ! shiny::isTruthy(input$jscookie)) {   ## e.g. no cookie
+                settled(TRUE)
             } else {
-                user$logged_in <- TRUE
-                user$info <- cookie
+                promises::finally(
+                    ## Look up cookie in DB...
+                    cookie_store$retrieve(input$jscookie) %then% {
+                        stored_auth_data <- .
+                        if (shiny::isTruthy(stored_auth_data)) {
+                            user$logged_in <- TRUE
+                            user$info <- stored_auth_data
+                        } else {
+                            ## Stale or forged cookie; delete it
+                            shinyjs::js$shinylogin_rmcookie()
+                        }
+                    },
+                    ## ... then settle (regardless of success)
+                    ~{ settled(TRUE) })
             }
-        }
-    })
+        })
 
     list(
         settled = settled,
