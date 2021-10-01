@@ -46,10 +46,8 @@ passwordLogin <- function(auth, cookie_store = NULL, reload_on_logout = FALSE) {
                         input, output, session,
                         auth$checkPassword, cookie_store, reload_on_logout)
 
-                    ## return object w/ reactive list
-                    list(user = shiny::reactive({
-                        shiny::reactiveValuesToList(user)
-                    }))
+                    ## Grant app code a read-only facet:
+                    list(user = user$state)
                 })
         })
 }
@@ -125,16 +123,7 @@ htpasswdAuth <- function(path) {
 #' @param cookie_store  An object returned by e.g. \link{inMemoryCookieStore}, or NULL if no persistent session mechanism is to be used
 #' @param reload_on_logout should app force a session reload on logout?
 #'
-#' @return A `shiny::ReactivValues` object `user` having
-#'     `user$logged_in`, a boolean indicating whether there has been a
-#'     successful login or not (or NULL to signify that login checks
-#'     are still in progress); and `user$info`, which will be either
-#'     the return value of `checkPassword` (if the `cookie` parameter
-#'     is missing or NULL), the return value of `cookie$retrieve` (if
-#'     `cookie` is non-NULL and the browser presented a valid cookie),
-#'     or the union (performed with `c()` of the return values of
-#'     `checkPassword` and `cookie$create` (if `cookie` is non-NULL
-#'     and the browser did not present a valid cookie).
+#' @return The `user` object from \link{serve_shinylogin}
 #'
 #' @importFrom promises %...>%
 serve_password_login <- function(input, output, session, checkPassword, cookie_store = NULL, reload_on_logout = FALSE) {
@@ -152,7 +141,7 @@ serve_password_login <- function(input, output, session, checkPassword, cookie_s
         shinyjs::toggle(
                      id = "panel_login",
                      condition = (is.null(cookies) || cookies$settled()) &&
-                         user$logged_in == FALSE)
+                         user$state()$logged_in == FALSE)
     })
 
     shiny::observeEvent(input$button_login, {
@@ -163,14 +152,9 @@ serve_password_login <- function(input, output, session, checkPassword, cookie_s
                 shinyjs::toggle(id = "error", anim = TRUE, time = 1, animType = "fade")
                 shinyjs::delay(5000, shinyjs::toggle(id = "error", anim = TRUE, time = 1, animType = "fade"))
             } else {
-                user$logged_in <- TRUE
-                user$info <- list(user = user_id)
+                user$addLoginDetails(list(user = user_id))
                 if (! is.null(cookies)) {
-                    cookies$save(user$info) %...>% {
-                        ## Augment state with anything the cookie store wants to add
-                        ## (e.g. date of creation / expiration):
-                        user$info <- c(user$info, .)
-                    }
+                    cookies$save(user$state()$info) %...>% { user$addLoginDetails(.) }
                 }
             }
         }
@@ -185,8 +169,7 @@ serve_password_login <- function(input, output, session, checkPassword, cookie_s
             session$reload()
         } else {
             shiny::updateTextInput(session, "password", value = "")
-            user$logged_in <- FALSE
-            user$info <- NULL
+            user$logout()
         }
     })
 

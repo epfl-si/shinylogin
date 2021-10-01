@@ -16,7 +16,7 @@ serve_cookie_login <- function(input, cookie_store, user) {
     shiny::observeEvent(
         input$jscookie,
         {
-            if (user$logged_in) {
+            if (user$state()$logged_in) {
                 ## E.g. receiving a cookie we just set
                 settled(TRUE)
             } else if (! shiny::isTruthy(input$jscookie)) {
@@ -49,8 +49,7 @@ async_load_cookie_data <- function(cookie_store, jscookie, user) {
     cookie_store$retrieve(jscookie) %then% {
         stored_auth_data <- .
         if (shiny::isTruthy(stored_auth_data)) {
-            user$logged_in <- TRUE
-            user$info <- stored_auth_data
+            user$addLoginDetails(stored_auth_data)
         } else {
             shinyjs::js$shinylogin_rmcookie()
         }
