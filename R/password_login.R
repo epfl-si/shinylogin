@@ -64,7 +64,6 @@ htpasswdAuth <- function(path) {
         }, error = function(...) { FALSE })
     }
 
-    ## TODO: make this an R6Class() or something
     list(checkPassword = function(username, password) {
         htpasswd_line <- read.csv(path, sep=":", header = FALSE,
                                   col.names = c("user", "hashed_password")
@@ -124,7 +123,6 @@ inMemoryCookieStore <- function(expire_days = 7) {
         DBI::dbWriteTable(db, "sessions", new_cookie, append = TRUE)
     }
 
-    ## TODO: make this an R6Class() or something
     list(
         expire_days = expire_days,
 
