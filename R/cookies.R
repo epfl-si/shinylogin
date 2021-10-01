@@ -6,8 +6,6 @@
 #' beneficial to the user experience to make it so that users don't
 #' have to re-type their password every time they visit the shiny
 #' application in their browser again.
-#'
-#' @importFrom promises %...>%
 serve_cookie_login <- function(input, cookie_store, user) {
     settled <- shiny::reactiveVal(FALSE)
 
@@ -28,7 +26,7 @@ serve_cookie_login <- function(input, cookie_store, user) {
                    nchar(input$jscookie) > 0           ## ... if cookie is empty
                )
 
-        make_promise(cookie_store$retrieve(input$jscookie)) %...>% {
+        cookie_store$retrieve(input$jscookie) %then% {
             cookie <- .
             if (is.null(cookie)) {
                 shinyjs::js$shinylogin_rmcookie()
@@ -42,7 +40,7 @@ serve_cookie_login <- function(input, cookie_store, user) {
     list(
         settled = settled,
         save = function(user_info) {
-            make_promise(cookie_store$create(user_info$user)) %...>% {
+            cookie_store$create(user_info$user) %then% {
                 shinyjs::js$shinylogin_setcookie(.$sessionid)
                 .$info
             }

@@ -39,11 +39,16 @@ serve_shinylogin <- function() {
     user
 }
 
-#' @return p if p is convertible to a promise; otherwise, a promise that resolves to p.
-make_promise <- function(p) {
-    if (promises::is.promising(p)) {
-        p
-    } else {
-        promises::promise_resolve(p)
+#' Like the `%...>%` operator from the promises package, except that if the LHS is not
+#' a promise, it will still work
+`%then%` <- function(lhs, rhs) {
+    if (! promises::is.promising(lhs)) {
+        lhs <- promises::promise_resolve(lhs)
     }
+    ## Stolen from the implementation of `%...>%` without understanding a darn thing!
+    parent <- parent.frame()
+    env <- new.env(parent = parent)
+    parts <- match.call()
+    func <- promises:::pipeify_rhs(parts[[3L]], env)
+    promises::then(lhs, func)
 }

@@ -137,7 +137,6 @@ htpasswdAuth <- function(path) {
 #'     and the browser did not present a valid cookie).
 #'
 #' @importFrom promises %...>%
-#'
 serve_password_login <- function(input, output, session, checkPassword, cookie_store = NULL, reload_on_logout = FALSE) {
     user <- serve_shinylogin()
 
@@ -157,7 +156,7 @@ serve_password_login <- function(input, output, session, checkPassword, cookie_s
     })
 
     shiny::observeEvent(input$button_login, {
-        make_promise(checkPassword(input$user_name, input$password)) %...>% {
+        checkPassword(input$user_name, input$password) %then% {
             user_id <- .
             if (is.null(user_id)) {
                 ## Send “wrong password” UI events down the websocket:
