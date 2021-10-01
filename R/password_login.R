@@ -28,7 +28,7 @@ passwordLogin <- function(auth, cookie_store = NULL, reload_on_logout = FALSE) {
                            login_title = "Log in",
                            error_message = "Invalid username or password!",
                            additional_ui = NULL) {
-            passwordLoginUI(id, title, user_title, pass_title,
+            password_login_ui(id, title, user_title, pass_title,
                             login_title, error_message, additional_ui,
                             cookie_js_ui = `if`(is.null(cookie_store), NULL,
                                                   cookie_js_ui(id = id,
@@ -174,7 +174,7 @@ serve_password_login <- function(input, output, session, checkPassword, cookie_s
 #' @param additional_ui Any additional UI that the app wants to put next to the login form
 #'
 #' @return Shiny UI login panel with user name text input, password text input and login action button.
-passwordLoginUI <- function(id,
+password_login_ui <- function(id,
                     title = "Please log in",
                     user_title = "User Name",
                     pass_title = "Password",
