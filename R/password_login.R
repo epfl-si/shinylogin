@@ -29,8 +29,10 @@ passwordLogin <- function(auth, cookie_store = NULL, reload_on_logout = FALSE) {
                            error_message = "Invalid username or password!",
                            additional_ui = NULL) {
             passwordLoginUI(id, title, user_title, pass_title,
-                           login_title, error_message, additional_ui,
-                           cookie_expire_days = cookie_store$expire_days)
+                            login_title, error_message, additional_ui,
+                            cookie_js_ui = `if`(is.null(cookie_store), NULL,
+                                                  cookie_js_ui(id = id,
+                                                               expire_days = cookie_store$expire_days)))
         },
 
         logoutUI = function(label = "Log out", icon = NULL, class = "btn-danger",

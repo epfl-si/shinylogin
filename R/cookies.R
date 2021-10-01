@@ -103,3 +103,33 @@ inMemoryCookieStore <- function(expire_days = 7) {
             }
         })
 }
+
+cookie_js_ui <- function(id, expire_days) {
+    ns <- shiny::NS(id)
+    id <- ns("jscookie")
+    cookie_name <- "shinylogin"
+
+    shinyjs::hidden(
+        shinyjs::useShinyjs(),
+        shiny::includeScript(system.file("js-cookie/js-cookie.js", package = "shinylogin")),
+        ## Arrange for the cookie to flow over the websocket into the R code:
+        shinyjs::extendShinyjs(
+            functions = c("shinylogin_getcookie", "shinylogin_setcookie", "shinylogin_rmcookie"),
+            text = glue::glue(.open = "{{{", .close = "}}}", r'{
+                shinyjs.shinylogin_getcookie = function(params) {
+                  var cookie = Cookies.get("{{{cookie_name}}}");
+                  if (typeof cookie === "undefined") {
+                    cookie = "";
+                  }
+                  Shiny.setInputValue("{{{id}}}", cookie);
+                }
+                shinyjs.shinylogin_setcookie = function(params) {
+                  Cookies.set("{{{cookie_name}}}", escape(params), { expires: {{{expire_days}}} });
+                  Shiny.setInputValue("{{{id}}}", params);
+                }
+                shinyjs.shinylogin_rmcookie = function(params) {
+                  Cookies.remove("{{{cookie_name}}}");
+                  Shiny.setInputValue("{{{id}}}", "");
+                }
+              }')))
+}
