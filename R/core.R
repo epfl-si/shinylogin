@@ -6,7 +6,7 @@
 #'
 #' If your app doesn't want to have a logged-out state at all, e.g.
 #' because it is sitting behind some kind of corporate SSO, then just
-#' don't call this function at all.
+#' don't call this function.
 #'
 #' @param id An ID string that corresponds with the ID used to call the module's server function
 #' @param label label for the logout button
