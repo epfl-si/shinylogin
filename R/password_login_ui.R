@@ -33,18 +33,18 @@ passwordLoginUI <- function(id,
                      functions = c("shinylogin_getcookie", "shinylogin_setcookie", "shinylogin_rmcookie"),
                      text = glue::glue(.open = "{{{", .close = "}}}", r'{
                 shinyjs.shinylogin_getcookie = function(params) {
-                  var cookie = Cookies.get("{{cookie_name}}");
+                  var cookie = Cookies.get("{{{cookie_name}}}");
                   if (typeof cookie === "undefined") {
                     cookie = "";
                   }
                   Shiny.setInputValue("{{{id}}}", cookie);
                 }
                 shinyjs.shinylogin_setcookie = function(params) {
-                  Cookies.set("{{cookie_name}}", escape(params), { expires: {{{cookie_expire_days}}} });
+                  Cookies.set("{{{cookie_name}}}", escape(params), { expires: {{{cookie_expire_days}}} });
                   Shiny.setInputValue("{{{id}}}", params);
                 }
                 shinyjs.shinylogin_rmcookie = function(params) {
-                  Cookies.remove("{{cookie_name}}");
+                  Cookies.remove("{{{cookie_name}}}");
                   Shiny.setInputValue("{{{id}}}", "");
                 }
               }'))
