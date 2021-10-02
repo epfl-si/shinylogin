@@ -34,7 +34,7 @@ serve_cookie_login <- function(input, cookie_store, user) {
     list(
         settled = settled,
         save = function(user_info) {
-            cookie_store$create(user_info$user) %then% {
+            cookie_store$create(user_info) %then% {
                 shinyjs::js$shinylogin_setcookie(.$sessionid)
                 .$info
             }
@@ -75,17 +75,17 @@ inMemoryCookieStore <- function(expire_days = 7) {
         dplyr::filter(all_cookies, login_time > lubridate::now() - lubridate::days(expire_days))
     }
 
-    cookie_setter = function(user, sessionid) {
-        new_cookie <- tibble::tibble(user = user, sessionid = sessionid, login_time = as.character(lubridate::now()))
+    cookie_setter = function(user_info, sessionid) {
+        new_cookie <- tibble::tibble(user = user_info$user, sessionid = sessionid, login_time = as.character(lubridate::now()))
         DBI::dbWriteTable(db, "sessions", new_cookie, append = TRUE)
     }
 
     list(
         expire_days = expire_days,
 
-        create = function(user_id) {
+        create = function(user_info) {
             sessionid_ <- randomString()
-            cookie_setter(user_id, sessionid_)
+            cookie_setter(user_info$user, sessionid_)
             info <- dplyr::filter(cookie_getter(), sessionid == sessionid_)
             if (nrow(info) == 1) {
                 list(
