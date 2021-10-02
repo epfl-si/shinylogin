@@ -56,6 +56,18 @@ async_load_cookie_data <- function(cookie_store, jscookie, user) {
     }
 }
 
+#' A very simple, non-persistent cookie store.
+#'
+#' This store is tailored for applications that use
+#' \link{passwordLogin} and manage the actual user permissions outside
+#' of shinylogin (perhaps using some kind of user database or LDAP
+#' directory; or perhaps there are none i.e. permissions are uniform
+#' for all users). The store only persists the username, and provides
+#' `$sessionid` (the cookie value) and `$login_time` (the time when
+#' the cookie was created) as additional fields to `$info`.
+#'
+#' The implementation is based upon an in-memory RSQLite database.
+#'
 #' @export
 inMemoryCookieStore <- function(expire_days = 7) {
     requireNamespace(c("DBI", "RSQLite", "lubridate", "tibble", "dplyr"))
