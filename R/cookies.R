@@ -61,7 +61,7 @@ inMemoryCookieStore <- function(expire_days = 7) {
     requireNamespace(c("DBI", "RSQLite", "lubridate", "tibble", "dplyr"))
 
     db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
-    DBI::dbCreateTable(db, "sessions", c(user = "TEXT", sessionid = "TEXT", login_time = "TEXT"))
+    DBI::dbCreateTable(db, "sessions", c(username = "TEXT", sessionid = "TEXT", login_time = "TEXT"))
 
     randomString <- function(n = 64) {
         paste(
@@ -76,7 +76,7 @@ inMemoryCookieStore <- function(expire_days = 7) {
     }
 
     cookie_setter = function(user_info, sessionid) {
-        new_cookie <- tibble::tibble(user = user_info$user, sessionid = sessionid, login_time = as.character(lubridate::now()))
+        new_cookie <- tibble::tibble(username = user_info$username, sessionid = sessionid, login_time = as.character(lubridate::now()))
         DBI::dbWriteTable(db, "sessions", new_cookie, append = TRUE)
     }
 
@@ -85,12 +85,12 @@ inMemoryCookieStore <- function(expire_days = 7) {
 
         create = function(user_info) {
             sessionid_ <- randomString()
-            cookie_setter(user_info$user, sessionid_)
+            cookie_setter(user_info, sessionid_)
             info <- dplyr::filter(cookie_getter(), sessionid == sessionid_)
             if (nrow(info) == 1) {
                 list(
                     sessionid = sessionid_,
-                    info = dplyr::select(info, -user))
+                    info = dplyr::select(info, -username))
             }
         },
 

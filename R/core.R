@@ -29,7 +29,7 @@ logoutUI <- function(id, label = "Log out", icon = NULL, class = "btn-danger", s
 #'     - `user$state()` — A read-only reactive variable containing the following fields:
 #'     - `user$state()$logged_in` — A boolean indicating whether there has been a successful login or not
 #'     - `user$state()$info` — Personal information about the logged-in user
-#'     - `user$addLoginDetails(lst)` — Add the items of `lst` to `user$info`. If said `user$info$user` exists afterwards, set `user$state()$logged_in`
+#'     - `user$addLoginDetails(lst)` — Add the items of `lst` to `user$info`. If said `user$info$username` exists afterwards, set `user$state()$logged_in`
 #'     - `user$logout()` — Unset `user$info` and set `user$state()$logged_in` to `FALSE`
 serve_shinylogin <- function(input, output, session, reload_on_logout = FALSE) {
     user <- shiny::reactiveValues(logged_in = FALSE, info = NULL)
@@ -71,7 +71,7 @@ serve_shinylogin <- function(input, output, session, reload_on_logout = FALSE) {
             } else {
                 user$info <- more_info
             }
-            if (! is.null(user$info$user)) {
+            if (! is.null(user$info$username)) {
                 user$logged_in <- TRUE
             }
         },

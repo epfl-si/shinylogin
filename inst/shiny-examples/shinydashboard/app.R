@@ -9,7 +9,7 @@ login <- shinylogin::passwordLogin(
   cookie_store = shinylogin::inMemoryCookieStore(expire_days = 7))
 
 user_base <- tibble(
-  user = c("user1", "user2"),
+  username = c("user1", "user2"),
   name = c("User One", "User Two"),
   permissions = c("admin", "standard"),
   password = c("pass1", "pass2"),    # Just to help the user “cheat.” Obviously, your app shouldn't have this!
@@ -64,7 +64,7 @@ server <- function(input, output, session) {
 
       do.call(tibble, server$user()$info) %>%
           left_join(
-              by = c("user"),
+              by = c("username"),
               user_base) %>%
           ## Obviously in a real app, you wouldn't have a `password` colum and
           ## you wouldn't have to do this:

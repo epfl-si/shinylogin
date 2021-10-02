@@ -146,7 +146,7 @@ serve_password_login <- function(input, output, session, checkPassword, cookie_s
                 shinyjs::toggle(id = "error", anim = TRUE, time = 1, animType = "fade")
                 shinyjs::delay(5000, shinyjs::toggle(id = "error", anim = TRUE, time = 1, animType = "fade"))
             } else {
-                user$addLoginDetails(list(user = user_id))
+                user$addLoginDetails(list(username = user_id))
                 if (! is.null(cookies)) {
                     cookies$save(user$state()$info) %...>% { user$addLoginDetails(.) }
                 }
