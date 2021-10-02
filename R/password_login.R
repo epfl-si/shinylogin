@@ -17,7 +17,7 @@ requireNamespace(c("promises", "glue", "shiny", "shinyjs"))
 #' @param reload_on_logout Whether the app force a session reload on logout, as a Boolean
 #'
 #' @export
-passwordLogin <- function(auth, cookie_store = NULL, reload_on_logout = FALSE) {
+passwordLogin <- function(auth, cookie_store = NULL) {
     id <- .ids$nextId()
 
     list(
@@ -40,7 +40,7 @@ passwordLogin <- function(auth, cookie_store = NULL, reload_on_logout = FALSE) {
             core.logoutUI(id, label, icon, class, style)
         },
 
-        loginServer = function() {
+        loginServer = function(reload_on_logout = FALSE) {
             shiny::moduleServer(
                 id,
                 function(input, output, session) {
