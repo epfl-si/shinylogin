@@ -48,8 +48,8 @@ passwordLogin <- function(auth, cookie_store = NULL, reload_on_logout = FALSE) {
                         input, output, session,
                         auth$checkPassword, cookie_store, reload_on_logout)
 
-                    ## Grant app code a read-only facet:
-                    list(user = user$state)
+                    ## Grant app code a low-privilege facet:
+                    list(user = user$state, logout = user$logout)
                 })
         })
 }
