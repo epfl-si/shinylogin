@@ -27,8 +27,9 @@
 #'
 #' @export
 core.logoutUI <- function(id, label = "Log out", icon = NULL, class = "btn-danger", style = "color: white;") {
-  shinyjs::hidden(
-    shiny::actionButton(shiny::NS(id, .button_logout_ID), label, icon = icon, class = class, style = style)
+    shinyjs::hidden(
+        shinyjs::useShinyjs(),
+        shiny::actionButton(shiny::NS(id, .button_logout_ID), label, icon = icon, class = class, style = style)
   )
 }
 
