@@ -48,6 +48,7 @@ The aforementioned `shinylogin::htpasswdAuth` and `shinylogin::inMemoryCookieSto
 
 All of the above fully support async operations (by means of your code returning [promises](https://cran.r-project.org/web/packages/promises/index.html)).
 
+A really simple [example](inst/shiny-examples/custom-auth/customauth.R) is provided, with a login button that logs you in as `joe` without any checks whatsoever.
 
 ### Other authentication techniques
 
