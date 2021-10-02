@@ -3,4 +3,5 @@
 export(htpasswdAuth)
 export(inMemoryCookieStore)
 export(passwordLogin)
+export(runExample)
 importFrom(promises,"%...>%")
