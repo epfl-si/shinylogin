@@ -37,7 +37,7 @@ passwordLogin <- function(auth, cookie_store = NULL, reload_on_logout = FALSE) {
 
         logoutUI = function(label = "Log out", icon = NULL, class = "btn-danger",
                             style = "color: white;") {
-            logoutUI(id, label, icon, class, style)
+            core.logoutUI(id, label, icon, class, style)
         },
 
         loginServer = function() {
@@ -54,7 +54,7 @@ passwordLogin <- function(auth, cookie_store = NULL, reload_on_logout = FALSE) {
         })
 }
 
-.ids <- newIDSequence("passwordLogin")
+.ids <- core.newIDSequence("passwordLogin")
 
 #' Authenticate users out of a bcrypt htpasswd file
 #'
@@ -117,11 +117,11 @@ htpasswdAuth <- function(path) {
 #' @param cookie_store  An object returned by e.g. \link{inMemoryCookieStore}, or NULL if no persistent session mechanism is to be used
 #' @param reload_on_logout Whether the app force a session reload on logout, as a Boolean
 #'
-#' @return The `user` object from \link{serve_shinylogin}
+#' @return The `user` object from \link{core.serve}
 #'
 #' @importFrom promises %...>%
 serve_password_login <- function(input, output, session, checkPassword, cookie_store = NULL, reload_on_logout = FALSE) {
-    user <- serve_shinylogin(input, output, session, reload_on_logout = reload_on_logout)
+    user <- core.serve(input, output, session, reload_on_logout = reload_on_logout)
 
     if (! is.null(cookie_store)) {
         cookies <- serve_cookie_login(input, cookie_store, user)
