@@ -116,6 +116,24 @@ inMemoryCookieStore <- function(expire_days = 7) {
         })
 }
 
+#' The “UI” (just some JavaScript actually) for Shiny apps that use session cookies.
+#'
+#' The `shinylogin_getcookie` JavaScript function is invoked by the
+#' server immediately after the Shiny app is done loading, and results
+#' in the browser pushing a `jscookie` input, whose value is either
+#' the session cookie (if set) or the empty string (thereby avoiding
+#' the special-case handling of NULL in \link{shiny::observeEvent}).
+#'
+#' The `shinylogin_setcookie` JavaScript function is invoked by the
+#' server upon succesful authentication.
+#' 
+#' Finally, the `shinylogin_rmcookie` JavaScript function is invoked by the
+#' server upon logout or when detecting an invalid or expired cookie.
+#'
+#' These three functions are in turn implemented in terms of
+#' [js-cookie](https://github.com/js-cookie/js-cookie), a small (<2k),
+#' portable “shim” API for accessing cookies on any browser; a copy of
+#' which is bundled with shinylogin.
 cookie_js_ui <- function(id, expire_days) {
     ns <- shiny::NS(id)
     id <- ns("jscookie")
@@ -124,7 +142,6 @@ cookie_js_ui <- function(id, expire_days) {
     shinyjs::hidden(
         shinyjs::useShinyjs(),
         shiny::includeScript(system.file("js-cookie/js-cookie.js", package = "shinylogin")),
-        ## Arrange for the cookie to flow over the websocket into the R code:
         shinyjs::extendShinyjs(
             functions = c("shinylogin_getcookie", "shinylogin_setcookie", "shinylogin_rmcookie"),
             text = glue::glue(.open = "{{{", .close = "}}}", r'{
